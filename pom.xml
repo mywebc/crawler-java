@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.github.mywebc</groupId>
-    <artifactId>java-crawler</artifactId>
+    <artifactId>crawler-java</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>
@@ -13,26 +13,6 @@
     </properties>
 
     <profiles>
-        <profile>
-            <id>aliyunMavenMirror</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <pluginRepositories>
-                <pluginRepository>
-                    <id>alimaven</id>
-                    <name>aliyun maven</name>
-                    <url>http://maven.aliyun.com/nexus/content/groups/public/</url>
-                </pluginRepository>
-            </pluginRepositories>
-            <repositories>
-                <repository>
-                    <id>alimaven</id>
-                    <name>aliyun maven</name>
-                    <url>http://maven.aliyun.com/nexus/content/groups/public/</url>
-                </repository>
-            </repositories>
-        </profile>
         <profile>
             <id>mavenCentral</id>
             <pluginRepositories>
