@@ -13,23 +13,28 @@
     </properties>
 
     <profiles>
-        <profile>
-            <id>mavenCentral</id>
-            <pluginRepositories>
-                <pluginRepository>
-                    <id>mavenCentral</id>
-                    <name>mavenCentral</name>
-                    <url>https://repo.maven.apache.org/maven2</url>
-                </pluginRepository>
-            </pluginRepositories>
-            <repositories>
-                <repository>
-                    <id>mavenCentral</id>
-                    <name>mavenCentral</name>
-                    <url>https://repo.maven.apache.org/maven2</url>
-                </repository>
-            </repositories>
-        </profile>
+
+    <!--        <profile>-->
+    <!--            <id>aliyunMavenMirror</id>-->
+    <!--            <activation>-->
+    <!--                <activeByDefault>true</activeByDefault>-->
+    <!--            </activation>-->
+    <!--            <pluginRepositories>-->
+    <!--                <pluginRepository>-->
+    <!--                    <id>alimaven</id>-->
+    <!--                    <name>aliyun maven</name>-->
+    <!--                    <url>http://maven.aliyun.com/nexus/content/groups/public/</url>-->
+    <!--                </pluginRepository>-->
+    <!--            </pluginRepositories>-->
+    <!--            <repositories>-->
+    <!--                <repository>-->
+    <!--                    <id>alimaven</id>-->
+    <!--                    <name>aliyun maven</name>-->
+    <!--                    <url>http://maven.aliyun.com/nexus/content/groups/public/</url>-->
+    <!--                </repository>-->
+    <!--            </repositories>-->
+    <!--        </profile>-->
+ 
     </profiles>
     <dependencies>
         <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
@@ -38,6 +43,14 @@
             <artifactId>httpclient</artifactId>
             <version>4.5.12</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.jsoup/jsoup -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.13.1</version>
+        </dependency>
+
+
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
