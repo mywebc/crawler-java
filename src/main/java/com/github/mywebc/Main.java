@@ -1,5 +1,6 @@
 package com.github.mywebc;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -11,42 +12,91 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
 import java.io.IOException;
+import java.sql.*;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class Main {
+    private static final String USER_NAME = "root";
+    private static final String PASSWORD = "root";
 
-    public static void main(String[] args) throws IOException {
-        // 待处理的链接池
-        List<String> linkPool = new ArrayList<>();
-        // 已经处理的链接池子
-        Set<String> processLinks = new HashSet<>();
-
-        linkPool.add("https://sina.cn");
+    @SuppressFBWarnings("DMI_CONSTANT_DB_PASSWORD")
+    public static void main(String[] args) throws IOException, SQLException {
+        Connection connection = DriverManager.getConnection("jdbc:h2:file:/Users/chenxiaole/learnTrain/java-crawler/news", USER_NAME, PASSWORD);
 
         while (true) {
+            // 待处理的链接池
+            List<String> linkPool = loadUrlFromDatabase(connection, "select link from LINKS_TO_BE_PROCESSED");
+            // 从数据库加载即将处理链接的代码
             if (linkPool.isEmpty()) {
                 break;
             }
-            // ArrayList 从尾部删除更有效率
-            String link = linkPool.remove(linkPool.size() - 1);
 
-            if (processLinks.contains(link)) {
+            String link = linkPool.remove(linkPool.size() - 1);
+            insertLinkIntoDatabase(connection, link, "delete from LINKS_TO_BE_PROCESSED where link = ?");
+
+            // c询问数据库当前链接是否被处理过
+            if (isLinkProcessed(connection, link)) {
                 continue;
             }
+
             if (isInterestingLink(link)) {
                 Document doc = httpGetAndParseHtml(link);
 
-                doc.select("a").stream().map(aTag -> aTag.attr("attr")).forEach(linkPool::add);
+                parseUrlFromPageAndStoreIntoDatabase(connection, doc);
 
                 storeInToDataBaseIfItIsNewsPage(doc);
-                processLinks.add(link);
-            } else {
-                continue;
+
+                insertLinkIntoDatabase(connection, link, "INSERT INTO LINKS_ALREADY_PROCESSED (link)values(?)");
+
             }
         }
+    }
+
+    private static void parseUrlFromPageAndStoreIntoDatabase(Connection connection, Document doc) throws SQLException {
+        for (Element aTag : doc.select("a")) {
+            String href = aTag.attr("href");
+            insertLinkIntoDatabase(connection, href, "INSERT INTO LINKS_TO_BE_PROCESSED (link)values(?)");
+        }
+    }
+
+    private static boolean isLinkProcessed(Connection connection, String link) throws SQLException {
+        ResultSet resultSet = null;
+        try (PreparedStatement statement = connection.prepareStatement("SELECT LINK FROM LINKS_ALREADY_PROCESSED where link =  ?")) {
+            statement.setString(1, link);
+            resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                return true;
+            }
+        } finally {
+            if (resultSet != null) {
+                resultSet.close();
+            }
+        }
+        return false;
+    }
+
+    private static void insertLinkIntoDatabase(Connection connection, String link, String s) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(s)) {
+            statement.setString(1, link);
+            statement.executeUpdate();
+        }
+    }
+
+    private static List<String> loadUrlFromDatabase(Connection connection, String s) throws SQLException {
+        List<String> results = new ArrayList<>();
+        ResultSet resultSet = null;
+        try (PreparedStatement statement = connection.prepareStatement(s)) {
+            resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                results.add(resultSet.getString(1));
+            }
+        } finally {
+            if (resultSet != null) {
+                resultSet.close();
+            }
+        }
+        return results;
     }
 
     private static void storeInToDataBaseIfItIsNewsPage(Document doc) {
@@ -59,6 +109,7 @@ public class Main {
         }
     }
 
+    @SuppressFBWarnings("RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE")
     private static Document httpGetAndParseHtml(String link) throws IOException {
         // 是否是我们感兴趣的
         CloseableHttpClient httpclient = HttpClients.createDefault();
@@ -71,10 +122,8 @@ public class Main {
         try (CloseableHttpResponse response1 = httpclient.execute(httpGet)) {
             System.out.println(response1.getStatusLine());
             HttpEntity entity1 = response1.getEntity();
-
             String html = EntityUtils.toString(entity1);
             return Jsoup.parse(html);
-
         }
     }
 
