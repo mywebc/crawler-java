@@ -71,8 +71,10 @@ public class Main {
         try (CloseableHttpResponse response1 = httpclient.execute(httpGet)) {
             System.out.println(response1.getStatusLine());
             HttpEntity entity1 = response1.getEntity();
+
             String html = EntityUtils.toString(entity1);
             return Jsoup.parse(html);
+
         }
     }
 
