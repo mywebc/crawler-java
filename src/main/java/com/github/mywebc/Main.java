@@ -14,6 +14,7 @@ import org.jsoup.nodes.Element;
 import java.io.IOException;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 public class Main {
     private static final String USER_NAME = "root";
@@ -33,11 +34,14 @@ public class Main {
             }
 
             if (isInterestingLink(link)) {
+
+                System.out.println(link);
+
                 Document doc = httpGetAndParseHtml(link);
 
                 parseUrlFromPageAndStoreIntoDatabase(connection, doc);
 
-                storeInToDataBaseIfItIsNewsPage(doc);
+                storeInToDataBaseIfItIsNewsPage(connection, doc, link);
 
                 updateDatabase(connection, link, "INSERT INTO LINKS_ALREADY_PROCESSED (link)values(?)");
             }
@@ -55,7 +59,14 @@ public class Main {
     private static void parseUrlFromPageAndStoreIntoDatabase(Connection connection, Document doc) throws SQLException {
         for (Element aTag : doc.select("a")) {
             String href = aTag.attr("href");
-            updateDatabase(connection, href, "INSERT INTO LINKS_TO_BE_PROCESSED (link)values(?)");
+
+            if (href.startsWith("//")) {
+                href = "https:" + href;
+            }
+
+            if (!href.toLowerCase().startsWith("javascript")) {
+                updateDatabase(connection, href, "INSERT INTO LINKS_TO_BE_PROCESSED (link)values(?)");
+            }
         }
     }
 
@@ -97,12 +108,19 @@ public class Main {
         return null;
     }
 
-    private static void storeInToDataBaseIfItIsNewsPage(Document doc) {
+    private static void storeInToDataBaseIfItIsNewsPage(Connection connection, Document doc, String link) throws SQLException {
         ArrayList<Element> articleTags = doc.select("article");
         if (!articleTags.isEmpty()) {
             for (Element articleTag : articleTags) {
                 String title = articleTags.get(0).child(0).text();
-                System.out.println(title);
+                String content = articleTag.select("p").stream().map(Element::text).collect(Collectors.joining("\n"));
+
+                try (PreparedStatement statement = connection.prepareStatement("insert into news (url,title,content,created_at,MODIFIED_AT)values(?,?,?,now(),now())")) {
+                    statement.setString(1, link);
+                    statement.setString(2, title);
+                    statement.setString(3, content);
+                    statement.executeUpdate();
+                }
             }
         }
     }
@@ -111,14 +129,10 @@ public class Main {
     private static Document httpGetAndParseHtml(String link) throws IOException {
         // 是否是我们感兴趣的
         CloseableHttpClient httpclient = HttpClients.createDefault();
-        if (link.startsWith("//")) {
-            link = "https:" + link;
-        }
-        System.out.println(link);
+
         HttpGet httpGet = new HttpGet("https://sina.cn");
         httpGet.addHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4181.9 Safari/537.36");
         try (CloseableHttpResponse response1 = httpclient.execute(httpGet)) {
-            System.out.println(response1.getStatusLine());
             HttpEntity entity1 = response1.getEntity();
             String html = EntityUtils.toString(entity1);
             return Jsoup.parse(html);
