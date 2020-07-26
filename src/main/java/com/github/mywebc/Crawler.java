@@ -16,43 +16,44 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
-public class Crawler {
+public class Crawler extends Thread {
 
-    private CrawlerDao dao = new MyBatisCrawlerDao();
+    private CrawlerDao dao;
 
-    public void run() throws SQLException, IOException {
+    public Crawler(CrawlerDao dao) {
+        this.dao = dao;
+    }
 
-        String link;
-        // 从数据库中加载下一个链接，如果能加载到，则继续循环
-        while ((link = dao.getNextLinkThenDelete()) != null) {
+    @Override
+    public void run() {
+        try {
+            String link;
+            // 从数据库中加载下一个链接，如果能加载到，则继续循环
+            while ((link = dao.getNextLinkThenDelete()) != null) {
 
-            // c询问数据库当前链接是否被处理过
-            if (dao.isLinkProcessed(link)) {
-                continue;
-            }
+                // c询问数据库当前链接是否被处理过
+                if (dao.isLinkProcessed(link)) {
+                    continue;
+                }
 
-            if (isInterestingLink(link)) {
+                if (isInterestingLink(link)) {
 
-                System.out.println(link);
+                    System.out.println(link);
 
-                Document doc = httpGetAndParseHtml(link);
+                    Document doc = httpGetAndParseHtml(link);
 
-                parseUrlFromPageAndStoreIntoDatabase(doc);
+                    parseUrlFromPageAndStoreIntoDatabase(doc);
 
-                storeInToDataBaseIfItIsNewsPage(doc, link);
+                    storeInToDataBaseIfItIsNewsPage(doc, link);
 
-                dao.insertProcessedLink(link);
+                    dao.insertProcessedLink(link);
 //                dao.updateDatabase(link, "INSERT INTO LINKS_ALREADY_PROCESSED (link)values(?)");
+                }
             }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
-
-
-    @SuppressFBWarnings("DMI_CONSTANT_DB_PASSWORD")
-    public static void main(String[] args) throws IOException, SQLException {
-        new Crawler().run();
-    }
-
 
     private void parseUrlFromPageAndStoreIntoDatabase(Document doc) throws SQLException {
         for (Element aTag : doc.select("a")) {
